@@ -1,0 +1,302 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+  // Sem binário nativo: necessário para rodar nos Cloudflare Workers
+  engineType      = "client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RegistrationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum TournamentStatus {
+  /// Rascunho: invisível no site público
+  DRAFT
+  /// Publicado: aparece no site; inscrições conforme registrationsOpen
+  SCHEDULED
+  /// Chaves em andamento
+  IN_PROGRESS
+  FINISHED
+  CANCELLED
+}
+
+enum CompetitionFormat {
+  SINGLE_ELIMINATION
+  ROUND_ROBIN
+}
+
+enum TournamentParticipantStatus {
+  ACTIVE
+  WITHDRAWN
+  DISQUALIFIED
+}
+
+enum MatchStatus {
+  PENDING
+  SCHEDULED
+  COMPLETED
+  BYE
+  CANCELLED
+}
+
+enum MatchResultType {
+  NORMAL
+  DRAW
+  WALKOVER
+  DISQUALIFICATION
+}
+
+/// Torneio criado pelo admin. Cada torneio tem tier, regras, premiação e chaves próprios.
+model Tournament {
+  id                 String           @id @default(cuid())
+  /// usado na URL pública (/torneios/<slug>)
+  slug               String           @unique
+  name               String
+  description        String           @default("")
+  status             TournamentStatus @default(DRAFT)
+  startsAt           DateTime
+  /// Término previsto. Não finaliza automaticamente partidas pendentes.
+  endsAt             DateTime?
+
+  competitionFormat  CompetitionFormat @default(SINGLE_ELIMINATION)
+  /// Pontos corridos: 1 = turno único, 2 = ida e volta.
+  roundRobinTurns     Int               @default(1)
+  pointsForWin        Int               @default(3)
+  pointsForDraw       Int               @default(1)
+  pointsForLoss       Int               @default(0)
+  allowDraw           Boolean           @default(false)
+
+  /// Formato do Pokémon Showdown (ex.: gen9ou) ou "free" (sem banlist de tier)
+  formatId           String           @default("gen9ou")
+  teamSize           Int              @default(6)
+  /// MD1, MD3 ou MD5
+  matchFormat        String           @default("MD1")
+
+  /// Categorias oficiais do Showdown (tags). false = proibida mesmo se o tier permitir.
+  allowRestricted    Boolean          @default(false)
+  allowLegendary     Boolean          @default(false)
+  allowMythical      Boolean          @default(false)
+  allowUltraBeast    Boolean          @default(false)
+  allowParadox       Boolean          @default(true)
+  /// Banimentos extras (ids da PokeAPI em src/data/pokemon.json)
+  bannedPokemonIds   Int[]
+  /// Exceções: sempre permitidos, ignorando tier e categorias
+  allowedPokemonIds  Int[]
+
+  /// Regra Monotype opcional (≥ monotypeMinimum com o mesmo tipo, até maxWildcards Coringas)
+  monotype           Boolean          @default(false)
+  monotypeMinimum    Int              @default(4)
+  maxWildcards       Int              @default(2)
+
+  /// Regras específicas em texto livre (uma por linha)
+  customRules        String           @default("")
+
+  entryFee           Int              @default(0)
+  /// 0 = sem limite de participantes
+  maxParticipants    Int              @default(16)
+  registrationsOpen  Boolean          @default(false)
+
+  prizeFirst         Int              @default(0)
+  prizeSecond        Int              @default(0)
+  prizeThird         Int              @default(0)
+  /// Recompensas além do dinheiro (itens, Pokémon, cargos…)
+  rewardDetails      String           @default("")
+
+  thirdPlaceMatch    Boolean          @default(true)
+  scheduleGeneratedAt DateTime?
+  /// Legado: mantido durante a transição das chaves para o gerenciador de competição.
+  bracketGeneratedAt DateTime?
+
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  registrations      Registration[]
+  participants       TournamentParticipant[]
+  matches            Match[]
+  auditLogs          AuditLog[]
+
+  @@index([status, startsAt])
+}
+
+model Admin {
+  id                  String         @id @default(cuid())
+  /// sempre em minúsculas
+  username            String         @unique
+  displayName         String
+  passwordHash        String
+  failedLoginAttempts Int            @default(0)
+  lockedUntil         DateTime?
+  lastLoginAt         DateTime?
+  createdAt           DateTime       @default(now())
+  sessions            AdminSession[]
+  auditLogs           AuditLog[]
+}
+
+/// Sessões de login. O cookie guarda um token aleatório; aqui fica só o SHA-256.
+model AdminSession {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  adminId   String
+  admin     Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([adminId])
+  @@index([expiresAt])
+}
+
+model Registration {
+  id                 String                @id @default(cuid())
+  tournamentId       String
+  tournament         Tournament            @relation(fields: [tournamentId], references: [id], onDelete: Restrict)
+  /// Número sequencial usado no código WINX-0001
+  number             Int                   @unique @default(autoincrement())
+  registrationCode   String?               @unique
+  nickname           String
+  /// nickname em minúsculas → um nick por torneio, ignorando maiúsculas
+  nicknameNormalized String
+  status             RegistrationStatus    @default(PENDING)
+
+  /// Preenchidos somente em torneios com regra Monotype
+  mainType           String?
+  possibleTypes      String[]
+  typeAmbiguous      Boolean               @default(false)
+  typeReviewedAt     DateTime?
+  typeReviewedBy     String?
+
+  paid               Boolean               @default(false)
+  paidAt             DateTime?
+  paidBy             String?
+
+  teamVerified       Boolean               @default(false)
+  teamVerifiedAt     DateTime?
+  teamVerifiedBy     String?
+
+  /// /checkteam <formato> aprovado no servidor
+  formatVerified     Boolean               @default(false)
+  formatVerifiedAt   DateTime?
+  formatVerifiedBy   String?
+
+  /// HMAC do código de edição do jogador (o código em si nunca é salvo)
+  editCodeHash       String?
+  editCodeCreatedAt  DateTime?
+
+  rejectionReason    String?
+  rejectedAt         DateTime?
+  rejectedBy         String?
+
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+
+  pokemon            RegistrationPokemon[]
+  auditLogs          AuditLog[]
+  matchesAsPlayer1   Match[]               @relation("MatchPlayer1")
+  matchesAsPlayer2   Match[]               @relation("MatchPlayer2")
+  matchesWon         Match[]               @relation("MatchWinner")
+  competitionEntries TournamentParticipant[]
+
+  @@unique([tournamentId, nicknameNormalized])
+  @@index([tournamentId, status])
+  @@index([createdAt])
+}
+
+/// Snapshot dos inscritos que efetivamente entraram na competição após o sorteio.
+model TournamentParticipant {
+  id             String                      @id @default(cuid())
+  tournamentId   String
+  tournament     Tournament                  @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  registrationId String
+  registration   Registration                @relation(fields: [registrationId], references: [id], onDelete: Restrict)
+  seed           Int
+  status         TournamentParticipantStatus @default(ACTIVE)
+  createdAt      DateTime                    @default(now())
+
+  @@unique([tournamentId, registrationId])
+  @@unique([tournamentId, seed])
+  @@index([registrationId])
+}
+
+model RegistrationPokemon {
+  /// Dados completos declarados pelo jogador; null identifica inscrições antigas.
+  battleSet      Json?
+  id             String       @id @default(cuid())
+  registrationId String
+  registration   Registration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  slot           Int
+  /// id do Pokémon/forma na PokeAPI (ex.: 10009 = Rotom-Wash)
+  pokemonId      Int
+  speciesId      Int
+  /// snapshot do nome e tipos no momento do registro
+  pokemonName    String
+  types          String[]
+  isWildcard     Boolean      @default(false)
+
+  @@unique([registrationId, slot])
+  /// Species Clause é validada no serviço; a tier Cobblemon Free For All permite espécies repetidas.
+}
+
+/// Partida das chaves (eliminação simples). Rodada 1 = primeira rodada.
+model Match {
+  id           String        @id @default(cuid())
+  tournamentId String
+  tournament   Tournament    @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  round        Int
+  /// ordem dentro da rodada (0 = primeira). Na última rodada, a disputa de 3º lugar usa position 1.
+  position     Int
+  isThirdPlace Boolean       @default(false)
+  player1Id    String?
+  player1      Registration? @relation("MatchPlayer1", fields: [player1Id], references: [id], onDelete: Restrict)
+  player2Id    String?
+  player2      Registration? @relation("MatchPlayer2", fields: [player2Id], references: [id], onDelete: Restrict)
+  winnerId     String?
+  winner       Registration? @relation("MatchWinner", fields: [winnerId], references: [id], onDelete: Restrict)
+  status       MatchStatus    @default(PENDING)
+  resultType   MatchResultType?
+  player1Score Int?
+  player2Score Int?
+  /// placar livre, ex.: "2-1"
+  score        String?
+  scheduledAt  DateTime?
+  completedAt  DateTime?
+  updatedAt    DateTime      @updatedAt
+
+  @@unique([tournamentId, round, position])
+}
+
+model AuditLog {
+  id                  String        @id @default(cuid())
+  adminId             String?
+  admin               Admin?        @relation(fields: [adminId], references: [id], onDelete: SetNull)
+  /// snapshot do nome do admin (mantido mesmo se o admin for removido)
+  adminName           String
+  tournamentId        String?
+  tournament          Tournament?   @relation(fields: [tournamentId], references: [id], onDelete: SetNull)
+  registrationId      String?
+  registration        Registration? @relation(fields: [registrationId], references: [id], onDelete: SetNull)
+  /// snapshot do nick (mantido mesmo se a inscrição for excluída)
+  participantNickname String?
+  action              String
+  description         String
+  metadata            Json?
+  createdAt           DateTime      @default(now())
+
+  @@index([createdAt])
+  @@index([registrationId])
+  @@index([tournamentId])
+}
+
+/// Registro de tentativas para rate limit (funciona com várias instâncias).
+model RateLimitHit {
+  id        BigInt   @id @default(autoincrement())
+  key       String
+  createdAt DateTime @default(now())
+
+  @@index([key, createdAt])
+}

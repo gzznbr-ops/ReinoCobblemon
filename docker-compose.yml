@@ -1,0 +1,14 @@
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: reino
+      POSTGRES_PASSWORD: reino
+      POSTGRES_DB: reino_cobblemon
+    ports:
+      - "5433:5432"
+    volumes:
+      - reino_pg:/var/lib/postgresql/data
+volumes:
+  reino_pg:

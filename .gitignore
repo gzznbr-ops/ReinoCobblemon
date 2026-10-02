@@ -1,0 +1,29 @@
+node_modules
+.next
+out
+.env
+.env.secrets
+*.bak
+.env.local
+*.tsbuildinfo
+next-env.d.ts
+.DS_Store
+
+# Cloudflare
+.open-next
+.wrangler
+.dev.vars
+cloudflare-env.d.ts
+
+# Cache do pacote pokemon-showdown usado por npm run showdown:sync
+.showdown-cache
+.preview-postgres
+
+# Credenciais e dados locais: nunca publicar no repositório do site.
+.env.*
+!.env.secrets.example
+.dev.vars.*
+*.log
+*.pem
+*.key
+minecraft/

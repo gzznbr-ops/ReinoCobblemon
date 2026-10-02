@@ -1,0 +1,126 @@
+@import "tailwindcss";
+
+/*
+ * Identidade visual do Reino Cobblemon:
+ * painéis de madeira escura com moldura dourada, faixas carmesim,
+ * Cinzel nos títulos e Roboto Condensed no texto.
+ */
+@theme {
+  --font-sans: var(--font-roboto-condensed), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-cinzel), Georgia, serif;
+
+  --color-ink-950: #0d0704;
+  --color-ink-900: #1a0f08;
+  --color-ink-850: #21140b;
+  --color-ink-800: #2c1b10;
+  --color-ink-700: #3a2616;
+  --color-line: rgb(139 105 20 / 0.35);
+
+  --color-gold-100: #fff3d6;
+  --color-gold-200: #ffe5b4;
+  --color-gold-300: #e5d3a1;
+  --color-gold-400: #d4af37;
+  --color-gold-500: #b8901f;
+  --color-gold-600: #8f6a13;
+  --color-gold-700: #6b4f0e;
+
+  --color-crimson-300: #f2a3a3;
+  --color-crimson-400: #e05555;
+  --color-crimson-500: #c42121;
+  --color-crimson-600: #8b0000;
+  --color-crimson-700: #5c0000;
+
+  --animate-fade-up: fade-up 0.4s ease-out both;
+  --animate-pop: pop 0.18s ease-out both;
+
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes pop {
+    from { opacity: 0; transform: scale(0.96); }
+    to { opacity: 1; transform: scale(1); }
+  }
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  background: var(--color-ink-950);
+  color: #f3ead7;
+}
+
+body {
+  min-height: 100dvh;
+  background-image:
+    radial-gradient(70rem 40rem at 50% -10%, rgb(212 175 55 / 0.16), transparent 60%),
+    radial-gradient(40rem 30rem at 0% 30%, rgb(139 0 0 / 0.18), transparent 60%),
+    radial-gradient(40rem 30rem at 100% 60%, rgb(139 0 0 / 0.14), transparent 60%),
+    linear-gradient(180deg, #160b06 0%, #0d0704 60%);
+  background-attachment: fixed;
+}
+
+/* Textura sutil de pedra/tecido atrás do hero */
+.bg-grid {
+  background-image:
+    linear-gradient(rgb(212 175 55 / 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(212 175 55 / 0.05) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse at center, black 25%, transparent 70%);
+}
+
+.text-gold-gradient {
+  background: linear-gradient(180deg, #fff3d6 0%, #e5c55a 45%, #b8901f 70%, #8f6a13 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 2px 0 rgb(0 0 0 / 0.6));
+}
+
+@utility card {
+  @apply rounded-sm border-2 border-gold-600/80 bg-linear-to-b from-ink-800 to-ink-900
+    shadow-[inset_0_0_15px_rgb(0_0_0/0.8),0_5px_15px_rgb(0_0_0/0.6)];
+}
+@utility panel-soft {
+  @apply rounded-sm border border-gold-600/40 bg-black/30;
+}
+/* Faixa carmesim com losangos dourados (títulos dos painéis) */
+@utility ribbon {
+  @apply relative inline-flex items-center justify-center whitespace-nowrap border border-gold-400 bg-crimson-600 px-6 py-1
+    font-display text-sm font-bold uppercase tracking-[0.12em] text-gold-100 shadow-lg shadow-black/50
+    before:absolute before:-left-2 before:top-1/2 before:h-3.5 before:w-3.5 before:-translate-y-1/2 before:rotate-45 before:border before:border-ink-900 before:bg-gold-400
+    after:absolute after:-right-2 after:top-1/2 after:h-3.5 after:w-3.5 after:-translate-y-1/2 after:rotate-45 after:border after:border-ink-900 after:bg-gold-400;
+}
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-sm px-4 py-2.5 font-display text-sm font-bold tracking-wide transition
+    disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-400;
+}
+@utility btn-primary {
+  @apply btn border border-gold-600 bg-linear-to-b from-[#a10f0f] via-crimson-600 to-crimson-700 text-gold-300 shadow-md shadow-black/50
+    hover:brightness-125 hover:text-gold-100;
+}
+@utility btn-secondary {
+  @apply btn border border-gold-600/70 bg-ink-800 text-gold-300 hover:border-gold-400 hover:bg-ink-700 hover:text-gold-100;
+}
+@utility btn-success {
+  @apply btn border border-gold-600 bg-linear-to-b from-emerald-700 to-emerald-900 text-emerald-50 hover:brightness-125;
+}
+@utility btn-danger {
+  @apply btn border border-red-500/40 bg-red-950/40 text-red-300 hover:bg-red-900/50;
+}
+@utility btn-ghost {
+  @apply btn text-gold-300/90 hover:bg-gold-400/10 hover:text-gold-100;
+}
+@utility input {
+  @apply w-full rounded-sm border border-gold-600/50 bg-black/40 px-3.5 py-2.5 text-[15px] text-gold-100
+    placeholder:text-stone-500 outline-none transition focus:border-gold-400 focus:ring-2 focus:ring-gold-400/25;
+}
+@utility label {
+  @apply mb-1.5 block font-display text-xs font-bold uppercase tracking-wider text-gold-400;
+}
+@utility heading {
+  @apply font-display font-bold uppercase tracking-wide;
+}

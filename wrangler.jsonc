@@ -1,0 +1,23 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "reino-cobblemon",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  // Hyperdrive reino-cobblemon-db (Neon, cache desativado)
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "fdf3a8e095fb469493f225c51c4da724"
+    }
+  ],
+  "vars": {
+    "TRUST_PROXY": "cloudflare",
+    "DISPLAY_TIMEZONE": "America/Sao_Paulo"
+  },
+  "observability": { "enabled": true }
+}
