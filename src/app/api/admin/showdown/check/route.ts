@@ -9,5 +9,8 @@ export async function GET(req: Request) {
   if (admin instanceof Response) return admin;
   if (!await rateLimit(`rules-check:${admin.id}`, 10, 60_000)) return jsonError("Aguarde um minuto antes de verificar novamente.", 429);
   try { return jsonOk(await checkRelease()); }
-  catch { return jsonError("Não foi possível consultar as versões do validador. Tente novamente.", 502); }
+  catch (error) {
+    console.warn("[rules/check]", error instanceof Error ? error.message : "Falha na consulta do registro");
+    return jsonError("Não foi possível consultar as versões do validador. Tente novamente.", 502);
+  }
 }

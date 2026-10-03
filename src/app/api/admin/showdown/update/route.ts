@@ -68,7 +68,7 @@ export async function POST(req: Request) {
     // The durable request remains pending even when Cloudflare's response is lost.
     // Retrying the same release is safe; builds acquire an exclusive database lock.
     try {
-      const response = await fetch(hook, { method: "POST", redirect: "error", signal: AbortSignal.timeout(10_000) });
+      const response = await fetch(hook, { method: "POST", redirect: "manual", signal: AbortSignal.timeout(10_000) });
       if (!response.ok) throw new Error("hook failed");
       const body = await response.json() as { success?: boolean };
       if (!body.success) throw new Error("hook failed");

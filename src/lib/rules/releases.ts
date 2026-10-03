@@ -4,9 +4,9 @@ import { eligibleRelease, stableVersion } from "./release-policy";
 
 async function latest(name: "sim" | "mods") {
   const res = await fetch(`https://registry.npmjs.org/@pkmn%2f${name}/latest`, {
-    cache: "no-store", signal: AbortSignal.timeout(8000), redirect: "error",
+    cache: "no-store", signal: AbortSignal.timeout(8000), redirect: "manual",
   });
-  if (!res.ok) throw new Error("Falha ao consultar versões do validador.");
+  if (!res.ok) throw new Error(`Registro de versões respondeu HTTP ${res.status}.`);
   const data = await res.json() as { name?: string; version?: string };
   if (data.name !== `@pkmn/${name}` || !data.version || !stableVersion(data.version)) throw new Error("Versão inválida no registro.");
   return data.version;
