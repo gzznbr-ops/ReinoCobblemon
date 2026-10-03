@@ -1,22 +1,10 @@
 "use client";
 
-import { withBase } from "@/lib/base-path";
+import { RulesUpdater } from "./RulesUpdater";
 import { useDeferredValue, useMemo, useState } from "react";
-import { COBBLEMON_FREE_FOR_ALL_FORMAT_ID, FORMAT_OPTIONS, FREE_FORMAT_ID, SHOWDOWN_SOURCE, formatBanGroups, showdownSourceLabel } from "@/lib/rules/showdown";
+import { COBBLEMON_FREE_FOR_ALL_FORMAT_ID, FORMAT_OPTIONS, FREE_FORMAT_ID, formatBanGroups } from "@/lib/rules/showdown";
 import { POKEMON_RECORDS, getPokemonRecord } from "@/lib/rules/tournament-rules";
-import { formatDateTime } from "@/lib/format";
 import { PokemonSprite } from "@/components/PokemonSprite";
-
-type Change = { sha: string; url: string; message: string; date: string };
-type CheckResult = {
-  latest: Change;
-  behindBy: number | null;
-  ruleChanges: Change[];
-  ruleChangesTotal?: number;
-  upToDate: boolean;
-  legacyNpm: boolean;
-  checkedAt: string;
-};
 
 const FORMATS = FORMAT_OPTIONS.filter((f) => f.id !== FREE_FORMAT_ID && f.id !== COBBLEMON_FREE_FOR_ALL_FORMAT_ID);
 const sections = [...new Set(FORMATS.map((f) => f.section))];
@@ -31,9 +19,6 @@ export function ShowdownBanlists() {
   const [formatId, setFormatId] = useState("gen9ou");
   const [query, setQuery] = useState("");
   const [showUnavailable, setShowUnavailable] = useState(false);
-  const [checking, setChecking] = useState(false);
-  const [check, setCheck] = useState<CheckResult | null>(null);
-  const [checkError, setCheckError] = useState<string | null>(null);
   const deferredQuery = useDeferredValue(query);
 
   const format = FORMATS.find((f) => f.id === formatId)!;
@@ -52,105 +37,9 @@ export function ShowdownBanlists() {
   }, [formatId, deferredQuery, showUnavailable]);
   const hiddenUnavailable = formatBanGroups(formatId).find((g) => g.reason.startsWith("Indisponível"))?.ids.length ?? 0;
 
-  async function runCheck() {
-    setChecking(true);
-    setCheckError(null);
-    try {
-      const res = await fetch(withBase("/api/admin/showdown/check"));
-      if (res.status === 401) {
-        window.location.href = withBase("/admin/login");
-        return;
-      }
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) setCheckError(data.error ?? "Falha ao verificar.");
-      else setCheck(data);
-    } catch {
-      setCheckError("Falha de conexão.");
-    } finally {
-      setChecking(false);
-    }
-  }
-
-  const upToDate = check?.upToDate ?? false;
-  const syncedUrl = SHOWDOWN_SOURCE.commit
-    ? `${SHOWDOWN_SOURCE.repository}/commit/${SHOWDOWN_SOURCE.commit}`
-    : SHOWDOWN_SOURCE.repository;
-
   return (
     <div className="space-y-6">
-      <section className="card space-y-4 p-5 sm:p-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <p className="label">Dados em uso no site</p>
-            <p className="font-display text-xl font-bold text-gold-100">
-              smogon/pokemon-showdown ·{" "}
-              <a href={syncedUrl} target="_blank" rel="noopener noreferrer" className="text-gold-300 underline">
-                {showdownSourceLabel()}
-              </a>
-            </p>
-            <p className="text-sm text-stone-400">
-              {SHOWDOWN_SOURCE.via === "github" ? `Compilado do GitHub (${SHOWDOWN_SOURCE.ref})` : "Pacote do npm (legado)"} ·
-              sincronizado em {formatDateTime(SHOWDOWN_SOURCE.generatedAt)} · {FORMATS.length} formatos
-            </p>
-          </div>
-          <button type="button" className="btn-primary shrink-0" onClick={runCheck} disabled={checking}>
-            {checking ? "Verificando…" : "♦ Verificar banlists no Showdown ♦"}
-          </button>
-        </div>
-
-        {checkError && <p className="rounded-sm border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-200">{checkError}</p>}
-
-        {check && (
-          <div
-            className={`rounded-sm border p-4 text-sm ${
-              upToDate ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-100" : "border-gold-400/50 bg-gold-400/10 text-gold-100"
-            }`}
-          >
-            <p className="font-display text-base font-bold">
-              {check.legacyNpm
-                ? "Regras fixadas na versão instalada do validador"
-                : upToDate
-                  ? "✔ Banlists atualizadas com o Showdown oficial"
-                  : `⚠ ${check.ruleChangesTotal ?? check.ruleChanges.length} mudança(s) de tier/regras no Showdown desde a sincronização`}
-            </p>
-            <p className="mt-1">
-              Último commit do master:{" "}
-              <a href={check.latest.url} target="_blank" rel="noopener noreferrer" className="underline">
-                {check.latest.sha}
-              </a>{" "}
-              ({formatDateTime(check.latest.date)}) — {check.latest.message}
-              {check.behindBy !== null && (
-                <>
-                  {" "}
-                  · o site está <strong>{check.behindBy}</strong> commit(s) atrás
-                  {check.behindBy > 0 && upToDate ? ", nenhum deles em tiers/regras" : ""}.
-                </>
-              )}
-            </p>
-            {check.ruleChanges.length > 0 && (
-              <>
-                <p className="mt-3 font-semibold">Mudanças em tiers, formatos ou regras ainda não aplicadas:</p>
-                <ul className="mt-1 space-y-1">
-                  {check.ruleChanges.map((c) => (
-                    <li key={c.sha} className="text-xs">
-                      <span className="text-stone-400">{formatDateTime(c.date)}</span> ·{" "}
-                      <a href={c.url} target="_blank" rel="noopener noreferrer" className="underline">
-                        {c.message}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </>
-            )}
-            {!upToDate && (
-              <p className="mt-3 text-xs text-stone-300">
-                Para atualizar o validador, revise primeiro as versões de @pkmn/sim e @pkmn/mods. Depois rode <code className="text-gold-300">npm run showdown:sync</code> e depois{" "}
-                <code className="text-gold-300">npm run cf:deploy</code>.
-              </p>
-            )}
-          </div>
-        )}
-      </section>
+      <RulesUpdater />
 
       <section className="card space-y-4 p-5 sm:p-6">
         <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">

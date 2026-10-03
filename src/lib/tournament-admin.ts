@@ -9,6 +9,7 @@ import { formatLabel } from "./rules/showdown";
 import { STATUS_LABELS, TournamentError } from "./tournaments";
 import { isUniqueViolation } from "./registrations";
 import { RULE_KEYS } from "./rules/tournament-rules";
+import { assertRulesAvailable } from "./rules/release-state";
 
 const LABELS: Record<keyof TournamentInput, string> = {
   name: "nome",
@@ -72,6 +73,7 @@ function slugError(error: unknown): never {
 export async function createTournament(admin: CurrentAdmin, input: TournamentInput) {
   try {
     return await prisma.$transaction(async (tx) => {
+      await assertRulesAvailable(tx);
       const created = await tx.tournament.create({ data: input });
       await writeAudit(tx, {
         admin,
@@ -100,6 +102,7 @@ const LOCKED_AFTER_SCHEDULE: (keyof TournamentInput)[] = [
 export async function updateTournament(admin: CurrentAdmin, id: string, patch: Partial<TournamentInput>) {
   try {
     return await prisma.$transaction(async (tx) => {
+      await assertRulesAvailable(tx);
       const current = await tx.tournament.findUnique({ where: { id } });
       if (!current) throw new TournamentError("Torneio não encontrado.", 404);
 

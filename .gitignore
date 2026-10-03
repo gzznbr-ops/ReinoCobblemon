@@ -12,6 +12,7 @@ next-env.d.ts
 # Cloudflare
 .open-next
 .wrangler
+.rules-build.json
 .dev.vars
 cloudflare-env.d.ts
 

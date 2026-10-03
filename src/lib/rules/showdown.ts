@@ -33,6 +33,8 @@ export type ShowdownSource = {
   commit: string | null;
   commitDate: string | null;
   version: string;
+  rulesRevision?: string;
+  deploymentId?: string;
   generatedAt: string;
 };
 

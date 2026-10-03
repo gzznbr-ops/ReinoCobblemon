@@ -7,7 +7,7 @@
     "build": "prisma generate && next build",
     "start": "node scripts/with-secrets.mjs next start",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test src/lib/round-robin.test.ts src/lib/rules/validate-battle-team.test.ts",
+    "test": "tsx --test src/lib/round-robin.test.ts src/lib/rules/validate-battle-team.test.ts src/lib/rules/release-policy.test.ts",
     "db:migrate": "node scripts/with-secrets.mjs prisma migrate dev",
     "db:deploy": "node scripts/with-secrets.mjs prisma migrate deploy",
     "db:seed": "node scripts/with-secrets.mjs tsx prisma/seed.ts",

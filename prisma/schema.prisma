@@ -300,3 +300,16 @@ model RateLimitHit {
 
   @@index([key, createdAt])
 }
+
+/// Aprovação persistente das regras e exclusão mútua dos builds de produção.
+model RulesRelease {
+  id              Int      @id
+  version         String
+  revision        String
+  pending         Boolean  @default(false)
+  buildId         String?
+  publishing      Boolean  @default(false)
+  lastAttemptAt   DateTime?
+  lastError       String?
+  updatedAt       DateTime @updatedAt
+}

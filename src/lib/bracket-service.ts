@@ -11,6 +11,7 @@ import { TournamentError, rulesOf } from "./tournaments";
 import { validateBattleTeam } from "./rules/validate-battle-team";
 import { storedSet } from "./pokemon/team-set";
 import { lockCapacity } from "./registrations";
+import { assertRulesAvailable } from "./rules/release-state";
 
 type Tx = Prisma.TransactionClient;
 
@@ -82,6 +83,7 @@ function parseAndValidateScore(
 
 export async function applyBracketAction(admin: CurrentAdmin, tournamentId: string, input: BracketAction) {
   return prisma.$transaction(async (tx) => {
+    await assertRulesAvailable(tx);
     await lockCapacity(tx, tournamentId);
     const tournament = await tx.tournament.findUnique({ where: { id: tournamentId } });
     if (!tournament) throw new TournamentError("Torneio não encontrado.", 404);
